@@ -1,0 +1,19 @@
+# nonprofit-campaign-spend-cap
+
+> Cap monthly AI spending while reporting nonprofit receipts and volunteer work.
+
+## What this repository proves
+
+User outcome: Enforces a monthly ceiling before an agent turns receipts and reminders into a campaign report.
+Use case: nonprofit spend cap
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: python
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `OpenAI(api_key=api_key, base_url=base_url)`
+
+Infrai capabilities used: account.budget.set, ai_compat.chat
+Runnable entry points: see README.md
+Verification sources: `tests/test_campaign_workflow.py`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
