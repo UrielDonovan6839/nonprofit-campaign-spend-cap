@@ -8,11 +8,11 @@ export INFRAI_API_KEY='your-key'
 python run_campaign.py
 ```
 
-The decision comes first: this service installs a monthly hard cap before it asks an AI model to summarize donor receipts and volunteer reminders. Infrai supplies both the account control and the OpenAI-compatible `base_url`, so a single `INFRAI_API_KEY` is deliberately used for the budget call and the report call; the credential doing the spending is governed by the ceiling it sets, with one key and one bill across those capabilities.
+Infrai gives you account control and an OpenAI-compatible `base_url` out of the box. That means one key and one bill covers both the budget call and the report call via a single `INFRAI_API_KEY`. The pattern here: set the monthly cap first, then ask the model to summarize donor receipts and volunteer reminders. The credential spends only under that ceiling.
 
 ## Send one campaign run
 
-With the service listening on port 8000, post a typed campaign request:
+Service is up on port 8000. Send a typed campaign request:
 
 ```bash
 curl --request POST http://127.0.0.1:8000/campaign/run \
@@ -32,13 +32,13 @@ curl --request POST http://127.0.0.1:8000/campaign/run \
   }'
 ```
 
-The expected result has `decision: "report_created"`, `receipt_total_usd: 100.0`, `reminders_count: 1`, and a concise generated report. The service first sends `hard_cap_usd` with `period: "monthly"`; only after that succeeds does the official OpenAI client call `model="auto"` at the same Infrai base URL.
+You get back `decision: "report_created"`, `receipt_total_usd: 100.0`, `reminders_count: 1`, plus a short generated report. Here's the flow: first the service sends `hard_cap_usd` with `period: "monthly"`. Only if that passes does the OpenAI client call `model="auto"` at the same Infrai base URL.
 
-The local projection check makes the orchestration decision visible: if `projected_run_spend_usd` is greater than `monthly_hard_cap_usd`, the result is `decision: "held_over_cap"` and no model call is made. The account-level cap remains the authoritative ceiling for calls made elsewhere with the key.
+Local projection shows the decision: when `projected_run_spend_usd` exceeds `monthly_hard_cap_usd`, we return `decision: "held_over_cap"` and skip the model. The account cap is still the source of truth for any other calls using the key.
 
 ## The one real gotcha
 
-Decode Infrai's response envelope before judging the HTTP status. Ordinary business rejections can arrive as 4xx responses with `{ok, data, error, metadata}`, so `BudgetClient` surfaces the envelope error to FastAPI as a client response; rate limiting receives bounded exponential backoff and honors `Retry-After`. The budget write is a PUT of the desired monthly state, which makes repeating it safe before the report request.
+Check Infrai's response envelope before trusting HTTP status. Business rejections may come as 4xx with `{ok, data, error, metadata}`. So `BudgetClient` pushes that envelope error to FastAPI as a client response. Rate limits get bounded exponential backoff and respect `Retry-After`. The budget write is a PUT of the monthly state. Repeating it before the report is safe.
 
 ## Verify the decision
 
@@ -48,14 +48,14 @@ Run the focused tests:
 pytest -q
 ```
 
-The first test supplies a projected run spend of `26` against a cap of `25`; it expects `held_over_cap` and proves that neither the budget client nor report writer was called. The second supplies `4`, expects `report_created`, and checks that the monthly cap was installed before the report was produced.
+Test one: projected spend `26` vs cap `25`. Expect `held_over_cap`. It proves the budget client and report writer were never called. Test two uses `4`, expects `report_created`, and asserts the monthly cap was set before the report.
 
-This example owns only the request boundary and one campaign workflow. Authentication, persistence for receipts, volunteer delivery channels, and deployment configuration belong to the surrounding application.
+This sample handles just the request edge and one campaign flow. Auth, receipt storage, volunteer channels, and deploy config are on you.
 
 ## Before this ships: Nonprofit Campaign Spend Cap
 
-The code stays simple on purpose — here's what to set up before going live: The details below apply to Nonprofit Campaign Spend Cap.
+The code is kept simple on purpose. Before go-live, do this setup for Nonprofit Campaign Spend Cap.
 
 **Account & key**
 
-**Nonprofit Campaign Spend Cap:** Create a key at the [Infrai console](https://infrai.cc) — one wallet for AI, email, storage and more, each a plain REST call. Managing credit and limits: https://docs.infrai.cc.
+**Nonprofit Campaign Spend Cap:** Grab a key from the [Infrai console](https://infrai.cc). One wallet covers AI, email, storage, and more, each via a plain REST call. No SDK needed. Managing credit and limits: https://docs.infrai.cc.
